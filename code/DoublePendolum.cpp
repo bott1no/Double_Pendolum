@@ -9,7 +9,7 @@ using namespace std;
 
 void dYdt (double , double *, double *);
 
-#define STAGE 2
+#define STAGE 3
 
 //STAGE 1 == convergency test
 //STAGE 2 == gif with 2 systems
@@ -27,62 +27,40 @@ int main(){
   double R[256];
   double gg = 9.81;
   
-  int N = 4;
+  int N = 10;
   
 #if STAGE == 1 //convergency test
   double Y4[256];
   double err1 = 10.;//setting the error at an high value
   double err2 = 10.;//setting the error at an high value
-
-  Y4[0] = 0.; //setting BC
-  Y4[1] = 0.;
-  Y4[2] = M_PI/100.;
-  Y4[3] = M_PI/100.;
-  
-  double BC1 = Y4[2];
-  double BC2 = Y4[3];
   L2 = 0.5;
   L1 = 1.;
   double L = L2/double(L1);
   
   ofstream convergency;
   convergency.open("convergency.dat");
-  
-  double x1_4 = L1 * sin(Y4[2]);  //definition of the cartesian coordinates
-  double y1_4 = - L1 * cos(Y4[2]);
-  double x2_4 = x1_4 + L2 * sin(Y4[3]);
-  double y2_4 = y1_4 - L2 * cos(Y4[3]);
-  
-  double vx1_4 = L1 * cos(Y4[2]) * Y4[0];
-  double vy1_4 = L1 * sin(Y4[2]) * Y4[0];
-  double vx2_4 = vx1_4 + L2 * cos(Y4[3]) * Y4[1];
-  double vy2_4 = vy1_4 + L2 * sin(Y4[3]) * Y4[1];
-  double tol = 0.2;
  
-  while (err2 > 1.e-4 && N < 1.e6) {
+  while (err2 > 1.e-4 && N < 1.e4) {
     t = 0.;
     dt = (tf - 0.)/double(N);
+    Y4[0] = 0.; //setting BC
+    Y4[1] = 0.;
+    Y4[2] = 1./100.;
+    Y4[3] = 1./100.;
+    double BC1 = Y4[2];
+    double BC2 = Y4[3];
+    
     while (t<=tf)
     {
-      x1_4 = L1 * sin(Y4[2]);
-      y1_4 = - L1 * cos(Y4[2]);
-      x2_4 = x1_4 + L2 * sin(Y4[3]);
-      y2_4 = y1_4 - L2 * cos(Y4[3]);
-      
-      vx1_4 = L1 * cos(Y4[2]) * Y4[0];
-      vy1_4 = L1 * sin(Y4[2]) * Y4[0];
-      vx2_4 = vx1_4 + L2 * cos(Y4[3]) * Y4[1];
-      vy2_4 = vy1_4 + L2 * sin(Y4[3]) * Y4[1];
-      
       RK4Step(t, Y4, dYdt, neq, dt);
       t += dt;
-     
     }
-    double theta2 = Y4[4];
-    err2 = fabs(theta2 - (BC2 - BC1/(1.-L)) * cos(t/sqrt(L)) + BC1 * cos(t)/(1.-L));
+    double theta2 = Y4[3];
+    double exact2 = (BC2 - BC1/(1.-L)) * cos((t-dt)/sqrt(L)) + BC1 * cos((t-dt))/(1.-L);
+    err2 = fabs(theta2 - exact2);
     convergency << N << " " << err1 << " " << err2 << " " << endl;
-    cout<<N<<"   "<<err2<<"   "<<dt<<endl;
-    N *= 4;
+    cout<<N<<"   "<<err2<<"   "<<exact2<<"  "<<Y4[3]<<endl;
+    N *= 2;
   }
   convergency.close();
   
@@ -97,8 +75,8 @@ int main(){
   
   Y2[0] = 0.; //velocities
   Y2[1] = 0.;
-  Y2[2] = 3.; //theta1
-  Y2[3] = 3.; //theta2
+  Y2[2] = 5.; //theta1
+  Y2[3] = 5.; //theta2
   
   Y4[0] = Y2[0]; //here we set the same BC for RK2 and RK4
   Y4[1] = Y2[1];
@@ -216,30 +194,12 @@ int main(){
       Y2[1] = Y1[1];
       Y2[2] = Y1[2];
       Y2[3] = Y1[3] + perturbation;
-      
-      double x1_4 = L1 * sin(Y1[2]);
-      double y1_4 = - L1 * cos(Y1[2]);
-      double x2_4 = x1_4 + L2 * sin(Y1[3]);
-      double y2_4 = y1_4 - L2 * cos(Y1[3]);
-      
-      double X1_4 = L1 * sin(Y2[2]);
-      double Y1_4 = - L1 * cos(Y2[2]);
-      double X2_4 = X1_4 + L2 * sin(Y2[3]);
-      double Y2_4 = Y1_4 - L2 * cos(Y2[3]);
+    
       t = 0.;
       double sumSquareDiff = 0.;
       while (t <= tf)
       {
-        x1_4 = L1 * sin(Y1[2]);
-        y1_4 = - L1 * cos(Y1[2]);
-        x2_4 = x1_4 + L2 * sin(Y1[3]);
-        y2_4 = y1_4 - L2 * cos(Y1[3]);
-        
-        X1_4 = L1 * sin(Y2[2]);
-        Y1_4 = - L1 * cos(Y2[2]);
-        X2_4 = X1_4 + L2 * sin(Y2[3]);
-        Y2_4 = Y1_4 - L2 * cos(Y2[3]);
-        
+       
         RK4Step(t, Y1, dYdt, neq, dt);
         RK4Step(t, Y2, dYdt, neq, dt);
         t += dt;
@@ -255,6 +215,7 @@ int main(){
       }
       if (LyapunovNorm > 0.) {
         chaos << InY1 << " " << InY2 << " " << endl;
+        
         //cout<<"Lyapunov: " << LyapunovNorm <<endl;
         /*cout<<"starting angles: Pi/" << m <<endl;
         cout<<"Lyapunov exponent: " << LyapunovNorm <<endl<<endl<<endl;*/
@@ -357,20 +318,11 @@ int main(){
       Y1[3] = M_PI*2.-m; //theta2
       double InY1 = Y1[2];
       double InY2 = Y1[3];
-      
-      double x1_4 = L1 * sin(Y1[2]);
-      double y1_4 = - L1 * cos(Y1[2]);
-      double x2_4 = x1_4 + L2 * sin(Y1[3]);
-      double y2_4 = y1_4 - L2 * cos(Y1[3]);
+    
       t = 0.;
       count = 0;
       while (t <= tf)
       {
-        x1_4 = L1 * sin(Y1[2]);
-        y1_4 = - L1 * cos(Y1[2]);
-        x2_4 = x1_4 + L2 * sin(Y1[3]);
-        y2_4 = y1_4 - L2 * cos(Y1[3]);
-        
         double pre_theta1 = Y1[2];
         double pre_theta2 = Y1[3];
       
