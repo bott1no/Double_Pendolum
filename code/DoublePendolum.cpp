@@ -9,7 +9,7 @@ using namespace std;
 
 void dYdt (double , double *, double *);
 
-#define STAGE 1
+#define STAGE 2
 
 //STAGE 1 == convergency test
 //STAGE 2 == gif with 2 systems
