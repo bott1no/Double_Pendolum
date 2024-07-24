@@ -9,7 +9,7 @@ using namespace std;
 
 void dYdt (double , double *, double *);
 
-#define STAGE 3
+#define STAGE 5
 
 //STAGE 1 == convergency test
 //STAGE 2 == gif with 2 systems
@@ -309,8 +309,8 @@ int main(){
   ofstream flip;
   flip.open("flip.dat");
   
-  for (double n = 0.1; n<2*M_PI; n+=0.1) {
-    for (double m = 0.; m<2*M_PI; m+=0.1) {
+  for (double n = 0.01; n<2*M_PI; n+=0.01) {
+    for (double m = 0.01; m<2*M_PI; m+=0.01) {
       
       Y1[0] = 0.;
       Y1[1] = 0.;
@@ -331,8 +331,10 @@ int main(){
         
         if ((pre_theta1 <= M_PI && Y1[2] > M_PI) || (pre_theta1 >= M_PI && Y1[2] < M_PI)) {
             count++;
+          break;
         }else if ((pre_theta2 <= M_PI && Y1[3] > M_PI) || (pre_theta2 >= M_PI && Y1[3] < M_PI)) {
           count++;
+          break;
         }
         
       }
