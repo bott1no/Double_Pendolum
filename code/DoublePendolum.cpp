@@ -9,13 +9,13 @@ using namespace std;
 
 void dYdt (double , double *, double *);
 
-#define STAGE 5
+#define STAGE 3
 
 //STAGE 1 == convergency test
 //STAGE 2 == gif with 2 systems
 //STAGE 3 == finding the configurations that lead to chaos
 //STAGE 4 == energy conservation
-//STAGE 5 == finding the configurations that lead to  flip
+//STAGE 5 == finding the configurations that lead to flip
 
 int main(){
   
@@ -30,6 +30,7 @@ int main(){
   int N = 10;
   
 #if STAGE == 1 //convergency test
+  
   double Y4[256];
   double err1 = 10.;//setting the error at an high value
   double err2 = 10.;//setting the error at an high value
@@ -45,7 +46,7 @@ int main(){
     dt = (tf - 0.)/double(N);
     Y4[0] = 0.; //setting BC
     Y4[1] = 0.;
-    Y4[2] = 1./100.;
+    Y4[2] = 1./100.; //setting a small angle oscillation
     Y4[3] = 1./100.;
     double BC1 = Y4[2];
     double BC2 = Y4[3];
@@ -56,7 +57,7 @@ int main(){
       t += dt;
     }
     double theta2 = Y4[3];
-    double exact2 = (BC2 - BC1/(1.-L)) * cos((t-dt)/sqrt(L)) + BC1 * cos((t-dt))/(1.-L);
+    double exact2 = (BC2 - BC1/(1.-double(L))) * cos((t-dt)/sqrt(double(L))) + BC1 * cos((t-dt))/(1.-double(L));
     err2 = fabs(theta2 - exact2);
     convergency << N << " " << err1 << " " << err2 << " " << endl;
     cout<<N<<"   "<<err2<<"   "<<exact2<<"  "<<Y4[3]<<endl;
@@ -75,8 +76,8 @@ int main(){
   
   Y2[0] = 0.; //velocities
   Y2[1] = 0.;
-  Y2[2] = 5.; //theta1
-  Y2[3] = 5.; //theta2
+  Y2[2] = 3.; //theta1
+  Y2[3] = 3.; //theta2
   
   Y4[0] = Y2[0]; //here we set the same BC for RK2 and RK4
   Y4[1] = Y2[1];
@@ -103,20 +104,10 @@ int main(){
   double x2_4 = x1_4 + L2 * sin3;
   double y2_4 = y1_4 - L2 * cos3;
   
-  double vx1_4 = L1 * cos2 * Y4[0];
-  double vy1_4 = L1 * sin2 * Y4[0];
-  double vx2_4 = vx1_4 + L2 * cos3 * Y4[1];
-  double vy2_4 = vy1_4 + L2 * sin3 * Y4[1];
-  
   double x1_2 = L1 * sin2_2;
   double y1_2 = - L1 * cos2_2;
   double x2_2 = x1_2 + L2 * sin2_3;
   double y2_2 = y1_2 - L2 * cos2_3;
-  
-  double vx1_2 = L1 * cos2_2 * Y2[0];
-  double vy1_2 = L1 * sin2_2 * Y2[0];
-  double vx2_2 = vx1_2 + L2 * cos2_3 * Y2[1];
-  double vy2_2 = vy1_2 + L2 * sin2_3 * Y2[1];
   
   t = 0.;
 
@@ -137,20 +128,10 @@ int main(){
     x2_4 = x1_4 + L2 * sin3;
     y2_4 = y1_4 - L2 * cos3;
     
-    vx1_4 = L1 * cos2 * Y4[0];
-    vy1_4 = L1 * sin2 * Y4[0];
-    vx2_4 = vx1_4 + L2 * cos3 * Y4[1];
-    vy2_4 = vy1_4 + L2 * sin3 * Y4[1];
-    
     x1_2 = L1 * sin2_2;
     y1_2 = - L1 * cos2_2;
     x2_2 = x1_2 + L2 * sin2_3;
     y2_2 = y1_2 - L2 * cos2_3;
-    
-    vx1_2 = L1 * cos2_2 * Y2[0];
-    vy1_2 = L1 * sin2_2 * Y2[0];
-    vx2_2 = vx1_2 + L2 * cos2_3 * Y2[1];
-    vy2_2 = vy1_2 + L2 * sin2_3 * Y2[1];
     
     rk4 << 0 << " " << Y4[0] << " " << Y4[1] <<" "<< x1_4 << " " << y1_4 << " " << x2_4 << " " << y2_4 << " " << endl;
     
@@ -160,12 +141,11 @@ int main(){
     RK4Step(t, Y2, dYdt, neq, dt);
     t += dt;
   }
-  
   rk2.close();
   rk4.close();
 #endif
   
-#if STAGE == 3
+#if STAGE == 3  //(careful, long run)
   //showing chaos with slightly different initial conditions
   
   double Y2[256]; //perturbated
@@ -176,7 +156,7 @@ int main(){
   tf = 20.;
   dt = (tf - t0)/double(2.e3);
   double LyapunovNorm;
-  
+
   ofstream chaos;
   chaos.open("chaos.dat");
   
@@ -199,7 +179,6 @@ int main(){
       double sumSquareDiff = 0.;
       while (t <= tf)
       {
-       
         RK4Step(t, Y1, dYdt, neq, dt);
         RK4Step(t, Y2, dYdt, neq, dt);
         t += dt;
@@ -208,16 +187,14 @@ int main(){
           double diff = fabs(Y1[i] - Y2[i]);
           sumSquareDiff += diff*diff;
         }
-        
         double Lyapunov = log(sqrt(sumSquareDiff));
         LyapunovNorm = Lyapunov/(t-t0);
-        
       }
       if (LyapunovNorm > 0.) {
         chaos << InY1 << " " << InY2 << " " << endl;
         
-        //cout<<"Lyapunov: " << LyapunovNorm <<endl;
-        /*cout<<"starting angles: Pi/" << m <<endl;
+        /*cout<<"Lyapunov: " << LyapunovNorm <<endl;
+        cout<<"starting angles: Pi/" << m <<endl;
         cout<<"Lyapunov exponent: " << LyapunovNorm <<endl<<endl<<endl;*/
      }
     }
@@ -268,7 +245,6 @@ int main(){
 
   while (t<=tf)
   {
-    
     sin2 = sin(Y4[2]);
     cos2 = cos(Y4[2]);
     sin3 = sin(Y4[3]);
@@ -292,9 +268,7 @@ int main(){
   
     RK4Step(t, Y4, dYdt, neq, dt);
     t += dt;
-  
   }
-
   rk4.close();
   energy.close();
 #endif
@@ -318,7 +292,6 @@ int main(){
       Y1[3] = M_PI*2.-m; //theta2
       double InY1 = Y1[2];
       double InY2 = Y1[3];
-    
       t = 0.;
       count = 0;
       while (t <= tf)
@@ -340,7 +313,6 @@ int main(){
       }
       if (count > 0) {
         flip << InY1 << " " << InY2 << " " << endl;
-        
      }
     }
   }
@@ -352,8 +324,7 @@ int main(){
 }
 
 
-void dYdt (double t, double *Y, double *R) //equation of motion 
-
+void dYdt (double t, double *Y, double *R) //equation of motion
 {
   double th1    = Y[2];
   double th2    = Y[3];
