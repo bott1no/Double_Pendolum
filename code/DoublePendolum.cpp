@@ -4,12 +4,13 @@
 #include <iomanip>
 #include <fstream>
 #include <cstdlib>
-
+#include <unistd.h>
 using namespace std;
 
 void dYdt (double , double *, double *);
 
-#define STAGE 1
+
+#define STAGE 5
 
 //STAGE 1 == convergency test
 //STAGE 2 == gif with 2 systems
@@ -26,74 +27,79 @@ int main(){
   int neq = 4;
   double R[256];
   double gg = 9.81;
+  int N;
+      std::cout << std::endl;
   
   //int N = 10;
   
 #if STAGE == 1 //convergency test
   
-  int N = 1024;
+  
 
   double Y4[256];
   double Y2[256];
- //setting the error at an high value
-  double err2 ;//setting the error at an high value
-  double err4 ;//setting the error at an high value
-  double err1 ;//setting the error at an high value
+  double YO[256];
+ 
+  double err2 ;
+  double err4 ;
+  double errO ;
   L2 = 0.5;
   L1 = 1.;
   double L = L2/double(L1);
+  double sqrtg = sqrt(gg/double(L1));
   
   ofstream convergency;
   convergency.open("convergency.dat");
-  Y4[0] = 0.; //setting BC
-  Y4[1] = 0.;
-  Y4[2] = 1./100.; //setting a small angle oscillation
-  Y4[3] = 1./100.;
-  
-  Y2[0] = 0.; //setting BC
-  Y2[1] = 0.;
-  Y2[2] = 1./100.; //setting a small angle oscillation
-  Y2[3] = 1./100.;
+  Y4[2] = 1./1000.; //setting a small angle oscillation
+  Y4[3] = 1./1000.;
   double BC1 = Y4[2];
   double BC2 = Y4[3];
-  double BC3 = Y4[0];
-  double BC4 = Y4[1];
-  tf = 10.;
+  //double BC3 = Y4[0];
+  //double BC4 = Y4[1];
+  tf = 3.;
  
-  while (N < 400000) {
+ 
+  for (N=4; N<=2047; N*=2) {
     t = 0.;
     dt = (tf - 0.)/double(N);
     Y4[0] = 0.; //setting BC
     Y4[1] = 0.;
-    Y4[2] = 1./100.; //setting a small angle oscillation
-    Y4[3] = 1./100.;
+    Y4[2] = 1./1000.; //setting a small angle oscillation
+    Y4[3] = 1./1000.;
     
     Y2[0] = 0.; //setting BC
     Y2[1] = 0.;
-    Y2[2] = 1./100.; //setting a small angle oscillation
-    Y2[3] = 1./100.;
+    Y2[2] = 1./1000.; //setting a small angle oscillation
+    Y2[3] = 1./1000.;
+    
+    YO[0] = 0.; //setting BC
+    YO[1] = 0.;
+    YO[2] = 1./1000.; //setting a small angle oscillation
+    YO[3] = 1./1000.;
     
     for(int l = 0; l<N;l+=1)
     {
-      RK4Step(t, Y4, dYdt, neq, dt);
-      RK2Step(t, Y2, dYdt, neq, dt);
+      RK4Step(t*sqrt(gg), Y4, dYdt, neq, dt);
+      RK2Step(t*sqrt(gg), Y2, dYdt, neq, dt);
+      EulerStep(t*sqrt(gg), YO, dYdt, neq, dt);
       t += dt;
     }
-    double omegaQuadro = gg/double(L1);
-    double exact2 = (BC2 - BC1/(1.-double(L))) * cos(tf/sqrt(double(L))) + BC1 * cos(tf)/(1.-double(L));
-   // double exact2 = ((-BC3+omegaQuadro*(BC1+L*BC3))*cos(t/sqrt(double(L)))+sqrt(L)*(-BC4+omegaQuadro*(BC2+L*BC4))*sin(t/sqrt(double(L)))-sqrt(omegaQuadro)*(sqrt(omegaQuadro)*BC1*cos(t*sqrt(omegaQuadro)+BC2*sin(t*sqrt(omegaQuadro)))))/(-1.+L*omegaQuadro);
-    
+   
+    double exact2 = (BC2 - BC1/(1.-double(L))) * cos(t*sqrt(gg)/sqrt(double(L))) + BC1 * cos(t*sqrt(gg))/(1.-double(L));
     err4 = fabs(Y4[3] - exact2);
     err2 = fabs(Y2[3] - exact2);
-    err1 = fabs(Y2[2] - BC1*cos(tf));
+    errO = fabs(YO[3] - exact2);
     
     
-    convergency << dt << " " << 1 << " " << err2 << " " << err4 << " " << endl;
-    cout<<N<<"   "<<Y4[3]<<"   "<<exact2<<"  "<<err4<<endl;
-    N *= 2;
+    
+    convergency << dt << " " << 1 << " " << err2 << " " << err4 << " " <<errO << endl;
+    cout << N << "  " << t << "  " << Y4[3] <<"  "<<exact2<< " "<<  err4<<endl;
+    
   }
   convergency.close();
-  
+  // double omegaQuadro = gg/double(L1);
+   
+  // double exact2 = ((-BC3+omegaQuadro*(BC1+L*BC3))*cos(t/sqrt(double(L)))+sqrt(L)*(-BC4+omegaQuadro*(BC2+L*BC4))*sin(t/sqrt(double(L)))-sqrt(omegaQuadro)*(sqrt(omegaQuadro)*BC1*cos(t*sqrt(omegaQuadro)+BC2*sin(t*sqrt(omegaQuadro)))))/(-1.+L*omegaQuadro);
 #endif
   
   //--------------------------------
@@ -182,8 +188,9 @@ int main(){
   double perturbation = 1.e-5;
   double sumSquareDiff = 0.;
   double t0 = 0.;
-  tf = 20.;
-  dt = (tf - t0)/double(2.e3);
+  tf = 10.;
+  N=3000;
+  dt = (tf - t0)/double(N);
   double LyapunovNorm;
 
   ofstream chaos;
@@ -206,26 +213,25 @@ int main(){
     
       t = 0.;
       double sumSquareDiff = 0.;
-      while (t <= tf)
+      for (int j =0; j<N; j++)
       {
         RK4Step(t, Y1, dYdt, neq, dt);
         RK4Step(t, Y2, dYdt, neq, dt);
         t += dt;
         
-        for (int i=0; i<4; i++) {
+        for (int i=2; i<4; i++) {
           double diff = fabs(Y1[i] - Y2[i]);
           sumSquareDiff += diff*diff;
         }
         double Lyapunov = log(sqrt(sumSquareDiff));
-        LyapunovNorm = Lyapunov/(t-t0);
+        LyapunovNorm = Lyapunov/double(tf);
       }
+      
       if (LyapunovNorm > 0.) {
         chaos << InY1 << " " << InY2 << " " << endl;
-        
-        /*cout<<"Lyapunov: " << LyapunovNorm <<endl;
-        cout<<"starting angles: Pi/" << m <<endl;
-        cout<<"Lyapunov exponent: " << LyapunovNorm <<endl<<endl<<endl;*/
      }
+      //chaos << InY1 << " " << InY2 << " " << LyapunovNorm << endl;
+      cout<<n<<" "<<m<<" "<<endl;
     }
     
   }
@@ -309,15 +315,23 @@ int main(){
   double Y1[256];
   double t0 = 0.;
   tf = 20.;
-  double N=2.e3;
+  N=4.e3;
   dt = (tf - t0)/double(N);
   int count=0;
   ofstream flip;
   flip.open("flip.dat");
   
+  double ttoflip1=-1.;
+  double ttoflip2=-2.;
+  double ttoflip=-3.;
+  
   
   for (double n = 0.01; n<2*M_PI; n+=0.01) {
     for (double m = 0.01; m<2*M_PI; m+=0.01) {
+      
+       ttoflip1=-1.;
+       ttoflip2=-1.;
+       ttoflip=-1.;
       
       Y1[0] = 0.;
       Y1[1] = 0.;
@@ -328,126 +342,43 @@ int main(){
       t = 0.;
       count = 0;
       for (int k=0; k<N; k++) {
+        
         double pre_theta1 = Y1[2];
         double pre_theta2 = Y1[3];
       
         RK4Step(t, Y1, dYdt, neq, dt);
-        t += dt;
-        
+      
         if ((pre_theta1 <= M_PI && Y1[2] > M_PI) || (pre_theta1 >= M_PI && Y1[2] < M_PI)) {
             count++;
+          if (ttoflip1<0) {
+            ttoflip1 = t;
+          }
           
         }else if ((pre_theta2 <= M_PI && Y1[3] > M_PI) || (pre_theta2 >= M_PI && Y1[3] < M_PI)) {
           count++;
-          
+          if (ttoflip2<0) {
+            ttoflip2 = t;
+          }
         }
+        t += dt;
+      }
+      cout<<ttoflip1<<endl;
+      if (ttoflip1 >= 0 || ttoflip2 >= 0) {  // Se almeno uno dei due flips è avvenuto
+          if (ttoflip1 >= 0 && ttoflip2 >= 0) {
+              ttoflip = std::min(ttoflip1, ttoflip2);  // il primo flip in assoluto
+          } else {
+              ttoflip = (ttoflip1 >= 0) ? ttoflip1 : ttoflip2;
+          }
       }
       
-     
-        flip << InY1 << " " << InY2 << " " << count << " " << endl;
-      if (count>=10) {
-        cout<<count<<endl;
-      }
-     
+      cout<<ttoflip<<endl;
+        flip << InY1 << " " << InY2 << " " << count << " " << ttoflip << endl;
     }
   }
   flip.close();
   
 #endif
-#if STAGE == 6 // just the one pendulum --> animated gif
-               // and energy considerations
 
-  int N = 8;
-
-  double Y4[256];
- //setting the error at an high value
-  double err2 ;//setting the error at an high value
-  L2 = 0.5;
-  L1 = 1.;
-  double L = L2/double(L1);
-  
-  ofstream convergency;
-  convergency.open("convergency.dat");
-  Y4[0] = 0.; //setting BC
-  Y4[1] = 0.;
-  Y4[2] = 3; //setting a small angle oscillation
-  Y4[3] = 2.;
-  
-  tf = 10.;
-  
-  double E4;
-  
-  t = 0.;
-  
-  double sin2 = sin(Y4[2]);
-  double cos2 = cos(Y4[2]);
-  double sin3 = sin(Y4[3]);
-  double cos3 = cos(Y4[3]);
-  
-  double x1_4 = L1 * sin2;  //definition of the cartesian coordinates
-  double y1_4 = - L1 * cos2;
-  double x2_4 = x1_4 + L2 * sin3;
-  double y2_4 = y1_4 - L2 * cos3;
-  
-  double vx1_4 = L1 * cos2 * Y4[0];
-  double vy1_4 = L1 * sin2 * Y4[0];
-  double vx2_4 = vx1_4 + L2 * cos3 * Y4[1];
-  double vy2_4 = vy1_4 + L2 * sin3 * Y4[1];
-  double Ereal = gg * (y1_4 + y2_4) + 0.5 * (vx1_4 * vx1_4 + vx2_4 * vx2_4 + vy1_4 * vy1_4 + vy2_4 * vy2_4);
-  
-  while (N < 40000) {
-    t = 0.;
-    dt = (tf - 0.)/double(N);
-    Y4[0] = 0.; //setting BC
-    Y4[1] = 0.;
-    Y4[2] = 3; //setting a small angle oscillation
-    Y4[3] = 2;
-    sin2 = sin(Y4[2]);
-    cos2 = cos(Y4[2]);
-    sin3 = sin(Y4[3]);
-    cos3 = cos(Y4[3]);
-    
-    x1_4 = L1 * sin2;  //definition of the cartesian coordinates
-    y1_4 = - L1 * cos2;
-    x2_4 = x1_4 + L2 * sin3;
-    y2_4 = y1_4 - L2 * cos3;
-    
-    vx1_4 = L1 * cos2 * Y4[0];
-    vy1_4 = L1 * sin2 * Y4[0];
-    vx2_4 = vx1_4 + L2 * cos3 * Y4[1];
-    vy2_4 = vy1_4 + L2 * sin3 * Y4[1];
-      
-    for(int l = 0; l<N;l+=1)
-     {
-       RK4Step(t, Y4, dYdt, neq, dt);
-       t += dt;
-       sin2 = sin(Y4[2]);
-       cos2 = cos(Y4[2]);
-       sin3 = sin(Y4[3]);
-       cos3 = cos(Y4[3]);
-       
-       x1_4 = L1 * sin2;  //definition of the cartesian coordinates
-       y1_4 = - L1 * cos2;
-       x2_4 = x1_4 + L2 * sin3;
-       y2_4 = y1_4 - L2 * cos3;
-       
-       vx1_4 = L1 * cos2 * Y4[0];
-       vy1_4 = L1 * sin2 * Y4[0];
-       vx2_4 = vx1_4 + L2 * cos3 * Y4[1];
-       vy2_4 = vy1_4 + L2 * sin3 * Y4[1];
-     }
-    
-   E4 = gg * (y1_4 + y2_4) + 0.5 * (vx1_4 * vx1_4 + vx2_4 * vx2_4 + vy1_4 * vy1_4 + vy2_4 * vy2_4);
-   err2 = fabs(Ereal - E4);
-   convergency << dt << " " << 1 << " " << err2 << " " << endl;
-   cout<<N<<"   "<<err2<<"   "<<Ereal<<"  "<<E4<<endl;
-   N *= 2;
-  }
-  
-  convergency.close();
- 
-#endif
-  
   return 0;
 }
 
@@ -458,7 +389,7 @@ void dYdt (double t, double *Y, double *R) //equation of motion
   double th2    = Y[3];
   double th1dot = Y[0];
   double th2dot = Y[1];
-  double m1 = 1.e6, m2 = 1., L1 = 1., L2 = 0.5, g = 9.81;
+  double m1 = 1., m2 = 1., L1 = 1., L2 = 1., g = 9.81;
   R[2] = Y[0];
   R[3] = Y[1];
   R[0] = (-g * (2. * m1 + m2) * sin(th1) - m2 * g * 
@@ -466,4 +397,5 @@ void dYdt (double t, double *Y, double *R) //equation of motion
           
   R[1] = (2. * sin(th1 - th2) * (th1dot * th1dot * L1 * (m1 + m2) + g * (m1 + m2) * cos(th1) + th2dot * th2dot * L2 * m2 * cos(th1 - th2)))/(L2*(2*m1 + m2 - m2 * cos(2.*th1 - 2.*th2)));
 }
+
 
